@@ -31,7 +31,7 @@
  *
  */
 
-export default {
+const easings = {
 	linear: function (t, b, c, d) {
 		return c * (t / d) + b;
 	},
@@ -209,3 +209,5 @@ export default {
 		return easings.easeOutBounce(t * 2 - d, 0, c, d) * 0.5 + c * 0.5 + b;
 	},
 };
+
+export default easings;

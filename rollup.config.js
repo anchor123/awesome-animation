@@ -1,29 +1,60 @@
-import { nodeResolve } from "@rollup/plugin-node-resolve";
+import resolve from "@rollup/plugin-node-resolve";
+import { spawn } from "child_process";
 import ts from "rollup-plugin-typescript2";
-import serve from "rollup-plugin-serve";
+import svelte from "rollup-plugin-svelte";
+import commonjs from "@rollup/plugin-commonjs";
 import clear from "rollup-plugin-clear";
 import { terser } from "rollup-plugin-terser";
+import livereload from "rollup-plugin-livereload";
+import less from "rollup-plugin-less";
+import alias from "@rollup/plugin-alias";
 import path from "path";
+import sveltePreprocess from "svelte-preprocess";
 
-const formats = [
-	"amd",
-	"amd.min",
-	"cjs",
-	"es",
-	"iife",
-	"iife.min",
-	"umd",
-	"umd.min",
-];
+const production = !process.env.ROLLUP_WATCH;
+
+const formats = production
+	? ["amd", "amd.min", "cjs", "es", "iife", "iife.min", "umd", "umd.min"]
+	: ["iife"];
+
+function serve() {
+	let server;
+
+	function toExit() {
+		if (server) server.kill(0);
+	}
+
+	return {
+		writeBundle() {
+			if (server) return;
+			server = spawn("npm", ["run", "start", "--", "--dev"], {
+				stdio: ["ignore", "inherit", "inherit"],
+				shell: true,
+			});
+
+			process.on("SIGTERM", toExit);
+			process.on("exit", toExit);
+		},
+	};
+}
+
+function getCamelCase(str) {
+	let arr = str.split("-");
+	return arr
+		.map((item) => {
+			return item.charAt(0).toUpperCase() + item.slice(1);
+		})
+		.join("");
+}
 
 export default {
-	input: "src/index.ts",
+	input: !production ? "demo/index.ts" : "src/index.ts",
 	output: formats.map((format) => {
 		return {
-			name: require("./package.json").name,
+			name: getCamelCase(require("./package.json").name),
 			file: path.resolve(
-				__dirname,
-				`dist/index${
+				process.cwd(),
+				`public/dist/index${
 					format.includes("iife") ? format.replace("iife", "") : `.${format}`
 				}.js`
 			),
@@ -33,22 +64,36 @@ export default {
 		};
 	}),
 	plugins: [
-		// 这个插件是有执行顺序的
 		clear({
-			targets: ["dist"],
+			targets: ["public/dist"],
 		}),
-		nodeResolve({
-			extensions: [".js", ".ts"],
-		}),
-		ts({
-			tsconfig: path.resolve(__dirname, "tsconfig.json"),
-		}),
-		process.env.NODE_ENV === "development" &&
-			serve({
-				port: 3000,
-				contentBase: "", // 表示起的服务是在根目录下
-				openPage: "/public/index.html", // 打开的是哪个文件
-				open: true, // 默认打开浏览器
+		!production &&
+			svelte({
+				preprocess: sveltePreprocess({ sourceMap: !production, less: {} }),
+				compilerOptions: {
+					dev: !production,
+				},
 			}),
-	].filter(Boolean),
+		alias({
+			entries: [
+				{ find: "src", replacement: path.resolve(process.cwd(), "src") },
+			],
+		}),
+		less({ output: "public/dist/index.css" }),
+		resolve({
+			browser: true,
+			extensions: [".svelte", ".js", ".ts"],
+			dedupe: ["svelte"],
+			exportConditions: ["svelte"],
+		}),
+		commonjs(),
+		ts({
+			tsconfig: path.resolve(process.cwd(), "tsconfig.json"),
+		}),
+		!production && serve(),
+		!production && livereload(),
+	],
+	watch: {
+		clearScreen: false,
+	},
 };
