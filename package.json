@@ -1,7 +1,8 @@
 {
   "name": "awesome-animation",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "动画调用工具",
+  "type": "module",
   "module": "public/dist/index.es.js",
   "main": "public/dist/index.cjs.js",
   "files": [
@@ -14,9 +15,9 @@
     "build": "rollup --config --bundleConfigAsCjs",
     "start": "sirv public --no-clear -p 3030"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["动画调用工具", "animation"],
+  "author": "danx",
+  "license": "MIT",
   "devDependencies": {
     "@rollup/plugin-alias": "^5.0.0",
     "@rollup/plugin-commonjs": "^25.0.4",
